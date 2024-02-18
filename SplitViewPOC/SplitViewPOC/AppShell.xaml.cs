@@ -17,7 +17,14 @@ namespace SplitViewPOC
 		public AppShell()
 		{
 			InitializeComponent();
-			IsPresentedChanged += AppShell_IsPresentedChanged;
+			
+			// this must be firing early as when enabled messes up the navigations
+			//SizeChanged += AppShell_SizeChanged;
+		}
+
+		private void AppShell_SizeChanged(object sender, EventArgs e)
+		{
+			CheckForSmallWindow();
 		}
 
 		private void AppShell_IsPresentedChanged(object sender, EventArgs e)
@@ -28,15 +35,18 @@ namespace SplitViewPOC
 
 		private async void ToolbarItem_Clicked(object sender, EventArgs e)
 		{
-			try
+			if (Width <= 375)
 			{
-				await ShowSmallWindowNavigation();
+				try
+				{
+					await ShowSmallWindowNavigation();
+				}
+				catch (Exception ex)
+				{
+					Debug.WriteLine(ex.ToString());
+				}
+				IsPresented = true;
 			}
-			catch (Exception ex)
-			{
-				Debug.WriteLine(ex.ToString());
-			}
-			IsPresented = true;
 		}
 
 		private Task ShowSmallWindowNavigation()
@@ -53,9 +63,7 @@ namespace SplitViewPOC
 		}
 
 		private void Button_Clicked(object sender, EventArgs e)
-		{
-			Navigation.PushAsync(new AboutPage());
-		}
+			=> Navigation.PushAsync(new AboutPage());
 
 		public new INavigation Navigation
 		{
@@ -74,11 +82,25 @@ namespace SplitViewPOC
 		protected override void OnAppearing()
 		{
 			base.OnAppearing();
-			EnterSmallWindowMode();
+			CheckForSmallWindow();
+			SizeChanged += AppShell_SizeChanged;
+			IsPresentedChanged += AppShell_IsPresentedChanged;
 		}
 
-		private void EnterSmallWindowMode()
+		protected override void OnDisappearing()
 		{
+			base.OnDisappearing();
+			SizeChanged -= AppShell_SizeChanged;
+			IsPresentedChanged -= AppShell_IsPresentedChanged;
+		}
+
+		private void CheckForSmallWindow()
+		{
+			if (Width > 375)
+			{
+				_isInSmallWindowMode = false;
+				return;
+			}
 			var teamRed = Flyout;
 			var teamBlue = Detail;
 			teamRed.Parent = null;
