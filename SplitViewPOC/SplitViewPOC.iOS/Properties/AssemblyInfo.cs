@@ -1,6 +1,11 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using UIKit;
+using Xamarin.Forms.Platform.iOS;
+using Xamarin.Forms;
+
+[assembly: ExportRenderer(typeof(FlyoutPage), typeof(TabletFlyoutPageRenderer), UIUserInterfaceIdiom.Pad)]
 
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information

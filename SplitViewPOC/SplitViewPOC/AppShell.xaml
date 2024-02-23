@@ -3,7 +3,7 @@
        xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
        xmlns:local="clr-namespace:SplitViewPOC.Views"
        Title="SplitViewPOC"
-       x:Class="SplitViewPOC.AppShell" FlyoutLayoutBehavior="Popover" BackgroundColor="Yellow">
+       x:Class="SplitViewPOC.AppShell" FlyoutLayoutBehavior="Default" BackgroundColor="Yellow">
 	<FlyoutPage.Flyout>
 		<ContentPage BackgroundColor="Red" Title="Team Red" Padding="40">
 			<StackLayout>
