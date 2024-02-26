@@ -361,6 +361,11 @@ namespace Xamarin.Forms.Platform.iOS
 					_isSmallWindowPresented = true;
 				}
 			}
+			else
+			{
+				Debug.WriteLine($"Not a Small Window: Is Presented: {FlyoutPage.IsPresented} | Is Being Dismissed: {IsBeingDismissed}");
+				_isSmallWindowPresented = false;
+		}
 		}
 
 		private bool IsSmallWindow(CGSize bounds) => bounds.Width <= 375;
@@ -546,14 +551,18 @@ namespace Xamarin.Forms.Platform.iOS
 
 		void PerformButtonSelector()
 		{
+			Debug.WriteLine("Perform Button Selector");
 			DisplayModeButtonItem.Target.PerformSelector(DisplayModeButtonItem.Action, DisplayModeButtonItem, 0);
 		}
 
 		void ToggleFlyout()
 		{
-			if (IsFlyoutVisible == FlyoutPage.IsPresented || FlyoutPage.ShouldShowSplitMode)
+			Debug.WriteLine($"Toggle Flyout: Flyout Width: {_flyoutWidth} | Is FlyoutVisible: {IsFlyoutVisible} | IsPresented: {FlyoutPage.IsPresented} | Should Show Split: {FlyoutPage.ShouldShowSplitMode}");
+			var halfScreenWidth = (UIScreen.MainScreen.Bounds.Size.Width / 2);
+			if (IsFlyoutVisible == FlyoutPage.IsPresented || (FlyoutPage.ShouldShowSplitMode && FlyoutPage.Width > halfScreenWidth))
 				return;
 
+			Debug.WriteLine("Toggle Flyout: Don't Exit Early");
 			PerformButtonSelector();
 		}
 
