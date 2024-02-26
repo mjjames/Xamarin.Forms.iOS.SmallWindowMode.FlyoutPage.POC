@@ -13,7 +13,7 @@
 		</ContentPage>
 	</FlyoutPage.Flyout>
 	<FlyoutPage.Detail>
-		<NavigationPage BackgroundColor="LightBlue" Title="Team Blue Nav">
+		<NavigationPage BackgroundColor="LightBlue" Title="Team Blue Nav" BarBackgroundColor="Green">
 			<x:Arguments>
 				<ContentPage BackgroundColor="Blue" Title="Team Blue">
 					<StackLayout>
@@ -22,6 +22,7 @@
 				</ContentPage>
 			</x:Arguments>
 			<NavigationPage.ToolbarItems>
+			<!-- todo make the button hide when in Landscape mode and width is greater than half the device width-->
 				<ToolbarItem Text="M" Clicked="ToolbarItem_Clicked" />
 			</NavigationPage.ToolbarItems>
 		</NavigationPage>
