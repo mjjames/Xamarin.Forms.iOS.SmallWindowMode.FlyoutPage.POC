@@ -31,8 +31,14 @@ namespace Xamarin.Forms.Platform.iOS
 		{
 			get
 			{
-				//todo: this property causes bugs as it's overriding our small window stuff
-				return !(_flyoutController?.View as EventedViewController.FlyoutView).IsCollapsed;
+				if (IsSmallWindow)
+				{
+					Debug.WriteLine($"Small Window: Is Small Window Presented? {_isSmallWindowPresented}", category: "IsFlyoutVisible");
+					return _isSmallWindowPresented;
+				}
+				var isFlyoutVisible = !(_flyoutController?.View as EventedViewController.FlyoutView).IsCollapsed;
+				Debug.WriteLine($"isFlyoutVisible: {isFlyoutVisible}", category: "IsFlyoutVisible");
+				return isFlyoutVisible;
 			}
 		}
 
@@ -175,7 +181,7 @@ namespace Xamarin.Forms.Platform.iOS
 			layoutDetails = _detailController?.View?.Superview != null;
 			var flyoutSuperView = _flyoutController.View.Superview?.ToString();
 			var detailSuperView = _detailController.View.Superview?.ToString();
-			bool isSmallWindow = IsSmallWindow(View.Bounds.Size);
+			bool isSmallWindow = IsSmallWindow;
 			if (isSmallWindow && !_isSmallWindowPresented && !layoutDetails)
 			{
 				//var detail = Platform.GetRenderer(FlyoutPage.Detail).ViewController;
@@ -198,8 +204,10 @@ namespace Xamarin.Forms.Platform.iOS
 			{
 				//_detailController.View.RemoveFromSuperview();
 				Debug.WriteLine("Renderer: Show Flyout View", nameof(ViewDidLayoutSubviews));
+				_isSmallWindowPresented = true;
 				View.AddSubview(_flyoutController.View);
 				layoutFlyout = true;
+				//PerformButtonSelector();
 			}
 
 			if (layoutFlyout)
@@ -240,11 +248,6 @@ namespace Xamarin.Forms.Platform.iOS
 				{
 					var isPresented = IsFlyoutVisible;
 					Debug.WriteLine($"Resize Check: IsPresented Drift |  Is Presented: {FlyoutPage.IsPresented} | Is Flyout Visible: {IsFlyoutVisible} | Is Small Window: {isSmallWindow} | IsSmallWindowPresented: {_isSmallWindowPresented}", nameof(ViewDidLayoutSubviews));
-					// this if doesn't really work, needs to be done in IsFlyoutVisible
-					//if (isSmallWindow)
-					//{
-					//	isPresented = _isSmallWindowPresented;
-					//}
 					ElementController.SetValueFromRenderer(Xamarin.Forms.FlyoutPage.IsPresentedProperty, isPresented);
 				}
 			}
@@ -271,17 +274,17 @@ namespace Xamarin.Forms.Platform.iOS
 			// todo: menu title doesn't appear when app loads in small window mode
 
 			Debug.WriteLine($"Is Presented Changed Is Presented: {FlyoutPage.IsPresented} | Is Being Dismissed: {IsBeingDismissed}", nameof(FlyoutPage_IsPresentedChanged));
-			if (IsSmallWindow(View.Bounds.Size))
+			if (IsSmallWindow)
 			{
-				Debug.WriteLine($"Is Small Window: Fully Started? {_hasAppFullyStarted} | Is Being Presented {IsBeingPresented} | Flyout Is Presented: {FlyoutPage.IsPresented} | Sub Views: {View.Subviews.Length} | Flyout Found in SubViews: {View.Subviews.Contains(_flyoutController.View)}", nameof(FlyoutPage_IsPresentedChanged));
-				if (!FlyoutPage.IsPresented && !_hasAppFullyStarted || View.Subviews.Length < 2 || View.Subviews.Contains(_flyoutController.View))
+				Debug.WriteLine($"Is Small Window: Fully Started? {_hasAppFullyStarted} | IsSmallWindowPresented: {_isSmallWindowPresented} |Is Being Presented {IsBeingPresented} | Flyout Is Presented: {FlyoutPage.IsPresented} | Sub Views: {View.Subviews.Length} | Flyout Found in SubViews: {View.Subviews.Contains(_flyoutController.View)}", nameof(FlyoutPage_IsPresentedChanged));
+				if (!FlyoutPage.IsPresented) // && !_hasAppFullyStarted || View.Subviews.Length < 2 || View.Subviews.Contains(_flyoutController.View))
 				{
 					Debug.WriteLine("Is Presented Changed: Show Details View", nameof(FlyoutPage_IsPresentedChanged));
 					_flyoutController.View.RemoveFromSuperview();
 					View.AddSubview(_detailController.View);
 					//todo: perform Button Selector here?
 					_isSmallWindowPresented = false;
-					_hasAppFullyStarted = true;
+					//_hasAppFullyStarted = true;
 				}
 				else
 				{
@@ -298,7 +301,7 @@ namespace Xamarin.Forms.Platform.iOS
 			}
 		}
 
-		private bool IsSmallWindow(CGSize bounds) => bounds.Width <= 375;
+		private bool IsSmallWindow => View.Bounds.Size.Width <= 375;
 
 		public override void ViewDidLoad()
 		{
@@ -324,7 +327,6 @@ namespace Xamarin.Forms.Platform.iOS
 				return;
 
 			bool isPortrait = newBounds.Height > newBounds.Width;
-			var isSmallWindow = IsSmallWindow(newBounds);
 			var previous = PreferredDisplayMode;
 
 			Debug.WriteLine($"Display Mode: {DisplayMode} Primary Width: {PrimaryColumnWidth} Collapsed: {Collapsed} Is Being Presented: {IsBeingPresented}");

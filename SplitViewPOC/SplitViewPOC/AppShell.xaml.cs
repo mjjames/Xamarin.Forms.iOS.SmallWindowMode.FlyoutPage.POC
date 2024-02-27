@@ -28,7 +28,6 @@ namespace SplitViewPOC
 
 		private void ToolbarItem_Clicked(object sender, EventArgs e)
 		{
-
 			if (CanChangeIsPresented)
 			{
 				IsPresented = !IsPresented;
@@ -42,13 +41,15 @@ namespace SplitViewPOC
 		{
 			get
 			{
-				if (_isInSmallWindowMode)
-				{
-					Debug.WriteLine("In Small Window Mode, using Flyout Nav");
-					return Flyout.Navigation;
-				}
-				Debug.WriteLine("Not In Small Window Mode, using Detail Nav");
-				return Detail.Navigation;
+				Debug.WriteLine($"Current Width {Width} | Flyout Width: {Flyout.Width} | Detail Width: {Detail.Width} | Is Presented: {IsPresented}");
+
+				//if (this.Width <= 375)
+				//{
+				//	Debug.WriteLine("In Small Window Mode - Use Detail Nav");
+					return Detail.Navigation;
+				//}
+				//Debug.WriteLine("Using Base Nav");
+				//return base.Navigation;
 			}
 		}
 
