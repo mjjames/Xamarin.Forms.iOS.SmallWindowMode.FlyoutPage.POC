@@ -8,111 +8,6 @@ using UIKit;
 
 namespace Xamarin.Forms.Platform.iOS
 {
-	internal class ChildViewController : UIViewController
-	{
-		public override void ViewDidLayoutSubviews()
-		{
-			foreach (var vc in ChildViewControllers)
-				vc.View.Frame = View.Bounds;
-		}
-	}
-
-	internal class EventedViewController : ChildViewController
-	{
-		FlyoutView _flyoutView;
-
-		event EventHandler _didAppear;
-		event EventHandler _willDisappear;
-
-		public EventedViewController()
-		{
-			_flyoutView = new FlyoutView();
-		}
-
-
-		public event EventHandler DidAppear
-		{
-			add
-			{
-				_flyoutView.DidAppear += value;
-				_didAppear += value;
-			}
-			remove
-			{
-				_flyoutView.DidAppear -= value;
-				_didAppear -= value;
-			}
-		}
-
-		public event EventHandler WillDisappear
-		{
-			add
-			{
-				_flyoutView.WillDisappear += value;
-				_willDisappear += value;
-			}
-			remove
-			{
-				_flyoutView.WillDisappear -= value;
-				_willDisappear -= value;
-			}
-		}
-
-		public override void ViewDidAppear(bool animated)
-		{
-			base.ViewDidAppear(animated);
-			_didAppear?.Invoke(this, EventArgs.Empty);
-		}
-
-		public override void ViewWillDisappear(bool animated)
-		{
-			base.ViewWillDisappear(animated);
-			_willDisappear?.Invoke(this, EventArgs.Empty);
-		}
-
-		public override void ViewDidDisappear(bool animated)
-		{
-			base.ViewDidDisappear(animated);
-			_willDisappear?.Invoke(this, EventArgs.Empty);
-		}
-
-		public override void LoadView()
-		{
-			View = _flyoutView;
-		}
-
-		public class FlyoutView : UIView
-		{
-			public bool IsCollapsed => Center.X <= 0;
-			bool _previousIsCollapsed = true;
-
-			public event EventHandler DidAppear;
-			public event EventHandler WillDisappear;
-
-			// this only gets called on iOS12 everytime it's collapsed or expanded
-			// I haven't found an override on iOS13 that gets called but it doesn't seem
-			// to matter because the DidAppear and WillDisappear seem more consistent on iOS 13
-			public override void LayoutSubviews()
-			{
-				base.LayoutSubviews();
-				UpdateCollapsedSetting();
-			}
-
-			void UpdateCollapsedSetting()
-			{
-				if (_previousIsCollapsed != IsCollapsed)
-				{
-					_previousIsCollapsed = IsCollapsed;
-
-					if (IsCollapsed)
-						WillDisappear?.Invoke(this, EventArgs.Empty);
-					else
-						DidAppear?.Invoke(this, EventArgs.Empty);
-				}
-			}
-		}
-	}
-
 	public class TabletFlyoutPageRenderer : UISplitViewController, IVisualElementRenderer, IEffectControlProvider
 	{
 		private const string XamarinRenderEvent = "Xamarin.UpdateToolbarButtons";
@@ -132,7 +27,14 @@ namespace Xamarin.Forms.Platform.iOS
 		private bool _hasAppFullyStarted;
 		Page PageController => Element as Page;
 		Element ElementController => Element as Element;
-		bool IsFlyoutVisible => !(_flyoutController?.View as EventedViewController.FlyoutView).IsCollapsed;
+		bool IsFlyoutVisible
+		{
+			get
+			{
+				//todo: this property causes bugs as it's overriding our small window stuff
+				return !(_flyoutController?.View as EventedViewController.FlyoutView).IsCollapsed;
+			}
+		}
 
 		protected FlyoutPage FlyoutPage => _flyoutPage ?? (_flyoutPage = (FlyoutPage)Element);
 
@@ -279,9 +181,13 @@ namespace Xamarin.Forms.Platform.iOS
 				//var detail = Platform.GetRenderer(FlyoutPage.Detail).ViewController;
 				//_detailController.View.AddSubview(detail.View);
 				//_detailController.AddChildViewController(detail);
+				Debug.WriteLine("Renderer: Show Details View", nameof(ViewDidLayoutSubviews));
+
 				View.AddSubview(_detailController.View);
 				//_flyoutController.View.Superview.AddSubview(_detailController.View);
 				layoutDetails = true;
+				//if (FlyoutPage.CanChangeIsPresented && FlyoutPage.IsPresented)
+				//	ElementController.SetValueFromRenderer(Xamarin.Forms.FlyoutPage.IsPresentedProperty, false);
 				//PerformButtonSelector();
 
 			}
@@ -291,6 +197,7 @@ namespace Xamarin.Forms.Platform.iOS
 				&& IsBeingPresented)
 			{
 				//_detailController.View.RemoveFromSuperview();
+				Debug.WriteLine("Renderer: Show Flyout View", nameof(ViewDidLayoutSubviews));
 				View.AddSubview(_flyoutController.View);
 				layoutFlyout = true;
 			}
@@ -327,10 +234,19 @@ namespace Xamarin.Forms.Platform.iOS
 			if (_previousViewDidLayoutSize != View.Bounds.Size)
 			{
 				_previousViewDidLayoutSize = View.Bounds.Size;
-
+				Debug.WriteLine("Resize Check for IsPresented Drift", nameof(ViewDidLayoutSubviews));
 				// make sure IsPresented matches state of Flyout View
 				if (FlyoutPage.CanChangeIsPresented && FlyoutPage.IsPresented != IsFlyoutVisible)
-					ElementController.SetValueFromRenderer(Xamarin.Forms.FlyoutPage.IsPresentedProperty, IsFlyoutVisible);
+				{
+					var isPresented = IsFlyoutVisible;
+					Debug.WriteLine($"Resize Check: IsPresented Drift |  Is Presented: {FlyoutPage.IsPresented} | Is Flyout Visible: {IsFlyoutVisible} | Is Small Window: {isSmallWindow} | IsSmallWindowPresented: {_isSmallWindowPresented}", nameof(ViewDidLayoutSubviews));
+					// this if doesn't really work, needs to be done in IsFlyoutVisible
+					//if (isSmallWindow)
+					//{
+					//	isPresented = _isSmallWindowPresented;
+					//}
+					ElementController.SetValueFromRenderer(Xamarin.Forms.FlyoutPage.IsPresentedProperty, isPresented);
+				}
 			}
 
 			if (_previousDisplayMode != PreferredDisplayMode)
@@ -345,17 +261,31 @@ namespace Xamarin.Forms.Platform.iOS
 
 		private void FlyoutPage_IsPresentedChanged(object sender, EventArgs e)
 		{
+
+			// todo: fix bug where if nav is visible when view resized, nav is hidden 
+			// but when nav button tapped it gets stuck in open close bug
+
+			// todo: fix bug where when switching to small window, details is show when it thinks menu should be open
+
+			// todo: toolbar item isn't shown when app loads in small window mode
+			// todo: menu title doesn't appear when app loads in small window mode
+
+			Debug.WriteLine($"Is Presented Changed Is Presented: {FlyoutPage.IsPresented} | Is Being Dismissed: {IsBeingDismissed}", nameof(FlyoutPage_IsPresentedChanged));
 			if (IsSmallWindow(View.Bounds.Size))
 			{
-				if (!_hasAppFullyStarted || View.Subviews.Length < 2 || View.Subviews.Contains(_flyoutController.View))
+				Debug.WriteLine($"Is Small Window: Fully Started? {_hasAppFullyStarted} | Is Being Presented {IsBeingPresented} | Flyout Is Presented: {FlyoutPage.IsPresented} | Sub Views: {View.Subviews.Length} | Flyout Found in SubViews: {View.Subviews.Contains(_flyoutController.View)}", nameof(FlyoutPage_IsPresentedChanged));
+				if (!FlyoutPage.IsPresented && !_hasAppFullyStarted || View.Subviews.Length < 2 || View.Subviews.Contains(_flyoutController.View))
 				{
+					Debug.WriteLine("Is Presented Changed: Show Details View", nameof(FlyoutPage_IsPresentedChanged));
 					_flyoutController.View.RemoveFromSuperview();
 					View.AddSubview(_detailController.View);
+					//todo: perform Button Selector here?
 					_isSmallWindowPresented = false;
 					_hasAppFullyStarted = true;
 				}
 				else
 				{
+					Debug.WriteLine("Is Presented Changed: Show Flyout View", nameof(FlyoutPage_IsPresentedChanged));
 					_detailController.View.RemoveFromSuperview();
 					View.AddSubview(_flyoutController.View);
 					_isSmallWindowPresented = true;
@@ -363,9 +293,9 @@ namespace Xamarin.Forms.Platform.iOS
 			}
 			else
 			{
-				Debug.WriteLine($"Not a Small Window: Is Presented: {FlyoutPage.IsPresented} | Is Being Dismissed: {IsBeingDismissed}");
+				Debug.WriteLine($"Not a Small Window: Is Presented: {FlyoutPage.IsPresented} | Is Being Dismissed: {IsBeingDismissed}", nameof(FlyoutPage_IsPresentedChanged));
 				_isSmallWindowPresented = false;
-		}
+			}
 		}
 
 		private bool IsSmallWindow(CGSize bounds) => bounds.Width <= 375;
@@ -413,7 +343,16 @@ namespace Xamarin.Forms.Platform.iOS
 					PreferredDisplayMode = (!isPortrait) ? UISplitViewControllerDisplayMode.OneBesideSecondary : UISplitViewControllerDisplayMode.OneBesideSecondary;
 					break;
 				default:
+					//if (!isPortrait && newBounds.Width <= 1366)
+					//{
+					//	Debug.WriteLine("Enter Popover Mode");
+					//	PreferredDisplayMode = UISplitViewControllerDisplayMode.OneOverSecondary;
+					//}
+					//else
+					//{
+					Debug.WriteLine("Enter Automatic Mode");
 					PreferredDisplayMode = UISplitViewControllerDisplayMode.Automatic;
+					//}
 					break;
 			}
 
@@ -452,6 +391,15 @@ namespace Xamarin.Forms.Platform.iOS
 
 		public override UIViewController ChildViewControllerForStatusBarHidden()
 		{
+			//var isSmallWindow = IsSmallWindow(View.Bounds.Size);
+			//Debug.WriteLine($"ChildViewControllerForStatusBarHidden: Is Small Window: {isSmallWindow} | Small Window Presented? {_isSmallWindowPresented}");
+
+			//if (isSmallWindow)
+			//{
+			//	Debug.WriteLine("Using Base ChildViewControllerForStatusBarHidden");
+			//	return base.ChildViewControllerForStatusBarHidden();
+			//}
+
 			if (((FlyoutPage)Element).Detail != null)
 				return (UIViewController)Platform.GetRenderer(((FlyoutPage)Element).Detail);
 			else
@@ -462,6 +410,16 @@ namespace Xamarin.Forms.Platform.iOS
 		{
 			get
 			{
+
+				//var isSmallWindow = IsSmallWindow(View.Bounds.Size);
+				//Debug.WriteLine($"ChildViewControllerForHomeIndicatorAutoHidden: Is Small Window: {isSmallWindow} | Small Window Presented? {_isSmallWindowPresented}");
+
+				//if (isSmallWindow)
+				//{
+				//	Debug.WriteLine("Using Base HomeIndicatorAutoHidden");
+				//	return base.ChildViewControllerForHomeIndicatorAutoHidden;
+				//}
+
 				if (((FlyoutPage)Element).Detail != null)
 					return (UIViewController)Platform.GetRenderer(((FlyoutPage)Element).Detail);
 				else

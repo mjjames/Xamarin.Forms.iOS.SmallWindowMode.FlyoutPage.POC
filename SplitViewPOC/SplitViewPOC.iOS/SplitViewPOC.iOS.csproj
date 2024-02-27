@@ -64,6 +64,8 @@
     <CodesignEntitlements>Entitlements.plist</CodesignEntitlements>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="ChildViewController.cs" />
+    <Compile Include="EventedViewController.cs" />
     <Compile Include="FlowDirectionExtensions.cs" />
     <Compile Include="ImageElementManager.cs" />
     <Compile Include="Main.cs" />
