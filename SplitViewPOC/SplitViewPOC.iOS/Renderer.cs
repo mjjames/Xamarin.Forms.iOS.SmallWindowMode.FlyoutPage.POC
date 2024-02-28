@@ -301,7 +301,10 @@ namespace Xamarin.Forms.Platform.iOS
 			}
 		}
 
-		private bool IsSmallWindow => View.Bounds.Size.Width <= 375;
+		private bool IsSmallWindow
+			=> base.View.Bounds.Size.Width <= 375 || (IsPortrait && IsThreeQuartersScreen);
+
+		private bool IsThreeQuartersScreen => (View.Bounds.Size.Width <= (UIScreen.MainScreen.Bounds.Size.Width / 4) * 3);
 
 		public override void ViewDidLoad()
 		{
@@ -312,11 +315,6 @@ namespace Xamarin.Forms.Platform.iOS
 			_tracker = new VisualElementTracker(this);
 			_events = new EventTracker(this);
 			_events.LoadEvents(NativeView);
-		}
-
-		public void PokeStuff()
-		{
-			UpdateFlyoutLayoutBehavior(View.Bounds.Size);
 		}
 
 		void UpdateFlyoutLayoutBehavior(CGSize newBounds)
@@ -342,7 +340,7 @@ namespace Xamarin.Forms.Platform.iOS
 					PreferredDisplayMode = (isPortrait) ? UISplitViewControllerDisplayMode.OneBesideSecondary : UISplitViewControllerDisplayMode.SecondaryOnly;
 					break;
 				case FlyoutLayoutBehavior.SplitOnLandscape:
-					PreferredDisplayMode = (!isPortrait) ? UISplitViewControllerDisplayMode.OneBesideSecondary : UISplitViewControllerDisplayMode.OneBesideSecondary;
+					PreferredDisplayMode = (!isPortrait) ? UISplitViewControllerDisplayMode.OneBesideSecondary : UISplitViewControllerDisplayMode.SecondaryOnly;
 					break;
 				default:
 					//if (!isPortrait && newBounds.Width <= 1366)
@@ -517,14 +515,22 @@ namespace Xamarin.Forms.Platform.iOS
 
 		void ToggleFlyout()
 		{
-			Debug.WriteLine($"Toggle Flyout: Flyout Width: {_flyoutWidth} | Is FlyoutVisible: {IsFlyoutVisible} | IsPresented: {FlyoutPage.IsPresented} | Should Show Split: {FlyoutPage.ShouldShowSplitMode}");
+
 			var halfScreenWidth = (UIScreen.MainScreen.Bounds.Size.Width / 2);
-			if (IsFlyoutVisible == FlyoutPage.IsPresented || (FlyoutPage.ShouldShowSplitMode && FlyoutPage.Width > halfScreenWidth))
+			//var threeQuartersWith = (halfScreenWidth / 2) * 3;
+			Debug.WriteLine($"Toggle Flyout: Flyout Width: {_flyoutWidth} | Half Screen Width: {halfScreenWidth}  | Is FlyoutVisible: {IsFlyoutVisible} | IsPresented: {FlyoutPage.IsPresented} | Should Show Split: {FlyoutPage.ShouldShowSplitMode}");
+			if (IsFlyoutVisible == FlyoutPage.IsPresented
+				|| (FlyoutPage.ShouldShowSplitMode && FlyoutPage.Width > halfScreenWidth)
+				//|| FlyoutPage.Width > threeQuartersWith && IsPortrait()
+				)
+				//todo: need to fix portrait mode when in 3/4 mode
 				return;
 
 			Debug.WriteLine("Toggle Flyout: Don't Exit Early");
 			PerformButtonSelector();
 		}
+
+		private static bool IsPortrait => UIApplication.SharedApplication.StatusBarOrientation.IsPortrait();
 
 		void UpdateBackground()
 		{
