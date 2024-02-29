@@ -11,6 +11,7 @@ namespace Xamarin.Forms.Platform.iOS
 	public class TabletFlyoutPageRenderer : UISplitViewController, IVisualElementRenderer, IEffectControlProvider
 	{
 		private const string XamarinRenderEvent = "Xamarin.UpdateToolbarButtons";
+		private const int SmallWindowThreshold = 510;
 		UIViewController _detailController;
 
 		bool _disposed;
@@ -184,30 +185,19 @@ namespace Xamarin.Forms.Platform.iOS
 			bool isSmallWindow = IsSmallWindow;
 			if (isSmallWindow && !_isSmallWindowPresented && !layoutDetails)
 			{
-				//var detail = Platform.GetRenderer(FlyoutPage.Detail).ViewController;
-				//_detailController.View.AddSubview(detail.View);
-				//_detailController.AddChildViewController(detail);
 				Debug.WriteLine("Renderer: Show Details View", nameof(ViewDidLayoutSubviews));
-
 				View.AddSubview(_detailController.View);
-				//_flyoutController.View.Superview.AddSubview(_detailController.View);
 				layoutDetails = true;
-				//if (FlyoutPage.CanChangeIsPresented && FlyoutPage.IsPresented)
-				//	ElementController.SetValueFromRenderer(Xamarin.Forms.FlyoutPage.IsPresentedProperty, false);
-				//PerformButtonSelector();
-
 			}
 			if (!isSmallWindow
 				&& !layoutFlyout
 				&& _flyoutController.View.Superview is null
 				&& IsBeingPresented)
 			{
-				//_detailController.View.RemoveFromSuperview();
 				Debug.WriteLine("Renderer: Show Flyout View", nameof(ViewDidLayoutSubviews));
 				_isSmallWindowPresented = true;
 				View.AddSubview(_flyoutController.View);
 				layoutFlyout = true;
-				//PerformButtonSelector();
 			}
 
 			if (layoutFlyout)
@@ -277,14 +267,12 @@ namespace Xamarin.Forms.Platform.iOS
 			if (IsSmallWindow)
 			{
 				Debug.WriteLine($"Is Small Window: Fully Started? {_hasAppFullyStarted} | IsSmallWindowPresented: {_isSmallWindowPresented} |Is Being Presented {IsBeingPresented} | Flyout Is Presented: {FlyoutPage.IsPresented} | Sub Views: {View.Subviews.Length} | Flyout Found in SubViews: {View.Subviews.Contains(_flyoutController.View)}", nameof(FlyoutPage_IsPresentedChanged));
-				if (!FlyoutPage.IsPresented) // && !_hasAppFullyStarted || View.Subviews.Length < 2 || View.Subviews.Contains(_flyoutController.View))
+				if (!FlyoutPage.IsPresented)
 				{
 					Debug.WriteLine("Is Presented Changed: Show Details View", nameof(FlyoutPage_IsPresentedChanged));
 					_flyoutController.View.RemoveFromSuperview();
 					View.AddSubview(_detailController.View);
-					//todo: perform Button Selector here?
 					_isSmallWindowPresented = false;
-					//_hasAppFullyStarted = true;
 				}
 				else
 				{
@@ -302,9 +290,10 @@ namespace Xamarin.Forms.Platform.iOS
 		}
 
 		private bool IsSmallWindow
-			=> base.View.Bounds.Size.Width <= 375 || (IsPortrait && IsThreeQuartersScreen);
+			=> base.View.Bounds.Size.Width <= SmallWindowThreshold || (IsPortrait && IsThreeQuartersScreen);
 
-		private bool IsThreeQuartersScreen => (View.Bounds.Size.Width <= (UIScreen.MainScreen.Bounds.Size.Width / 4) * 3);
+		private bool IsThreeQuartersScreen => View.Bounds.Size.Width <= ThreeQuartersWidth;
+		private nfloat ThreeQuartersWidth => (UIScreen.MainScreen.Bounds.Size.Width / 4) * 3;
 
 		public override void ViewDidLoad()
 		{
@@ -324,7 +313,6 @@ namespace Xamarin.Forms.Platform.iOS
 			if (flyoutDetailPage == null)
 				return;
 
-			bool isPortrait = newBounds.Height > newBounds.Width;
 			var previous = PreferredDisplayMode;
 
 			Debug.WriteLine($"Display Mode: {DisplayMode} Primary Width: {PrimaryColumnWidth} Collapsed: {Collapsed} Is Being Presented: {IsBeingPresented}");
@@ -337,22 +325,14 @@ namespace Xamarin.Forms.Platform.iOS
 					PreferredDisplayMode = UISplitViewControllerDisplayMode.SecondaryOnly;
 					break;
 				case FlyoutLayoutBehavior.SplitOnPortrait:
-					PreferredDisplayMode = (isPortrait) ? UISplitViewControllerDisplayMode.OneBesideSecondary : UISplitViewControllerDisplayMode.SecondaryOnly;
+					PreferredDisplayMode = (IsPortrait) ? UISplitViewControllerDisplayMode.OneBesideSecondary : UISplitViewControllerDisplayMode.SecondaryOnly;
 					break;
 				case FlyoutLayoutBehavior.SplitOnLandscape:
-					PreferredDisplayMode = (!isPortrait) ? UISplitViewControllerDisplayMode.OneBesideSecondary : UISplitViewControllerDisplayMode.SecondaryOnly;
+					PreferredDisplayMode = (!IsPortrait) ? UISplitViewControllerDisplayMode.OneBesideSecondary : UISplitViewControllerDisplayMode.SecondaryOnly;
 					break;
 				default:
-					//if (!isPortrait && newBounds.Width <= 1366)
-					//{
-					//	Debug.WriteLine("Enter Popover Mode");
-					//	PreferredDisplayMode = UISplitViewControllerDisplayMode.OneOverSecondary;
-					//}
-					//else
-					//{
 					Debug.WriteLine("Enter Automatic Mode");
 					PreferredDisplayMode = UISplitViewControllerDisplayMode.Automatic;
-					//}
 					break;
 			}
 
@@ -364,7 +344,7 @@ namespace Xamarin.Forms.Platform.iOS
 			}
 
 			Debug.WriteLine($"Display Mode: {DisplayMode} Primary Width: {PrimaryColumnWidth} Collapsed: {Collapsed} Is Being Presented: {IsBeingPresented}");
-			if (!FlyoutPage.ShouldShowSplitMode)
+			if (!ShouldShowSplitMode)
 				FlyoutPage.CanChangeIsPresented = true;
 
 			FlyoutPage.UpdateFlyoutLayoutBehavior();
@@ -372,7 +352,7 @@ namespace Xamarin.Forms.Platform.iOS
 
 		public override void ViewWillDisappear(bool animated)
 		{
-			if (IsFlyoutVisible && !FlyoutPage.ShouldShowSplitMode)
+			if (IsFlyoutVisible && !ShouldShowSplitMode)
 				PerformButtonSelector();
 
 			base.ViewWillDisappear(animated);
@@ -391,15 +371,6 @@ namespace Xamarin.Forms.Platform.iOS
 
 		public override UIViewController ChildViewControllerForStatusBarHidden()
 		{
-			//var isSmallWindow = IsSmallWindow(View.Bounds.Size);
-			//Debug.WriteLine($"ChildViewControllerForStatusBarHidden: Is Small Window: {isSmallWindow} | Small Window Presented? {_isSmallWindowPresented}");
-
-			//if (isSmallWindow)
-			//{
-			//	Debug.WriteLine("Using Base ChildViewControllerForStatusBarHidden");
-			//	return base.ChildViewControllerForStatusBarHidden();
-			//}
-
 			if (((FlyoutPage)Element).Detail != null)
 				return (UIViewController)Platform.GetRenderer(((FlyoutPage)Element).Detail);
 			else
@@ -410,16 +381,6 @@ namespace Xamarin.Forms.Platform.iOS
 		{
 			get
 			{
-
-				//var isSmallWindow = IsSmallWindow(View.Bounds.Size);
-				//Debug.WriteLine($"ChildViewControllerForHomeIndicatorAutoHidden: Is Small Window: {isSmallWindow} | Small Window Presented? {_isSmallWindowPresented}");
-
-				//if (isSmallWindow)
-				//{
-				//	Debug.WriteLine("Using Base HomeIndicatorAutoHidden");
-				//	return base.ChildViewControllerForHomeIndicatorAutoHidden;
-				//}
-
 				if (((FlyoutPage)Element).Detail != null)
 					return (UIViewController)Platform.GetRenderer(((FlyoutPage)Element).Detail);
 				else
@@ -515,19 +476,21 @@ namespace Xamarin.Forms.Platform.iOS
 
 		void ToggleFlyout()
 		{
-
-			var halfScreenWidth = (UIScreen.MainScreen.Bounds.Size.Width / 2);
-			//var threeQuartersWith = (halfScreenWidth / 2) * 3;
-			Debug.WriteLine($"Toggle Flyout: Flyout Width: {_flyoutWidth} | Half Screen Width: {halfScreenWidth}  | Is FlyoutVisible: {IsFlyoutVisible} | IsPresented: {FlyoutPage.IsPresented} | Should Show Split: {FlyoutPage.ShouldShowSplitMode}");
-			if (IsFlyoutVisible == FlyoutPage.IsPresented
-				|| (FlyoutPage.ShouldShowSplitMode && FlyoutPage.Width > halfScreenWidth)
-				//|| FlyoutPage.Width > threeQuartersWith && IsPortrait()
-				)
-				//todo: need to fix portrait mode when in 3/4 mode
+			Debug.WriteLine($"Toggle Flyout: Flyout Width: {_flyoutWidth} | Half Screen Width:   | Is FlyoutVisible: {IsFlyoutVisible} | IsPresented: {FlyoutPage.IsPresented} | Should Show Split: {FlyoutPage.ShouldShowSplitMode} | Custom: {ShouldShowSplitMode}");
+			if (IsFlyoutVisible == FlyoutPage.IsPresented || ShouldShowSplitMode)
 				return;
 
 			Debug.WriteLine("Toggle Flyout: Don't Exit Early");
 			PerformButtonSelector();
+		}
+
+		private bool ShouldShowSplitMode
+		{
+			get
+			{
+				Debug.WriteLine($"Should Show Split Mode: {FlyoutPage.ShouldShowSplitMode} | FlyoutPage Width: {FlyoutPage.Width} | {(UIScreen.MainScreen.Bounds.Size.Width / 2)}", "ShouldShowSplitMode");
+				return FlyoutPage.ShouldShowSplitMode && FlyoutPage.Width > ThreeQuartersWidth;
+			}
 		}
 
 		private static bool IsPortrait => UIApplication.SharedApplication.StatusBarOrientation.IsPortrait();
