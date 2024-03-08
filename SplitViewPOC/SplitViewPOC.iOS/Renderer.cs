@@ -186,6 +186,7 @@ namespace Xamarin.Forms.Platform.iOS
 			if (isSmallWindow && !_isSmallWindowPresented && !layoutDetails)
 			{
 				Debug.WriteLine("Renderer: Show Details View", nameof(ViewDidLayoutSubviews));
+				_flyoutController.View.RemoveFromSuperview();
 				View.AddSubview(_detailController.View);
 				layoutDetails = true;
 			}
@@ -196,6 +197,7 @@ namespace Xamarin.Forms.Platform.iOS
 			{
 				Debug.WriteLine("Renderer: Show Flyout View", nameof(ViewDidLayoutSubviews));
 				_isSmallWindowPresented = true;
+				_detailController.View.RemoveFromSuperview();
 				View.AddSubview(_flyoutController.View);
 				layoutFlyout = true;
 			}
@@ -271,7 +273,9 @@ namespace Xamarin.Forms.Platform.iOS
 				{
 					Debug.WriteLine("Is Presented Changed: Show Details View", nameof(FlyoutPage_IsPresentedChanged));
 					_flyoutController.View.RemoveFromSuperview();
+					_detailController.View.Frame = new CGRect(0, 0, View.Bounds.Width, View.Bounds.Height);
 					View.AddSubview(_detailController.View);
+					View.LayoutIfNeeded();
 					_isSmallWindowPresented = false;
 				}
 				else
