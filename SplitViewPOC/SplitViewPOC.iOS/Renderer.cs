@@ -11,7 +11,7 @@ namespace Xamarin.Forms.Platform.iOS
 	public class TabletFlyoutPageRenderer : UISplitViewController, IVisualElementRenderer, IEffectControlProvider
 	{
 		private const string XamarinRenderEvent = "Xamarin.UpdateToolbarButtons";
-		private const int SmallWindowThreshold = 510;
+		private const int SmallWindowThreshold = 597; //is this actually screen width is less that FlyoutWidth * 2?
 		UIViewController _detailController;
 
 		bool _disposed;
@@ -116,6 +116,7 @@ namespace Xamarin.Forms.Platform.iOS
 
 		public void SetElement(VisualElement element)
 		{
+			Debug.WriteLine("Screen Width: " + UIScreen.MainScreen.Bounds.Size.Width);
 			var oldElement = Element;
 			Element = element;
 
