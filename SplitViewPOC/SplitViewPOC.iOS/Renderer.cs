@@ -2,6 +2,7 @@ using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using CoreGraphics;
 using Foundation;
 using UIKit;
@@ -133,9 +134,12 @@ namespace Xamarin.Forms.Platform.iOS
 
 			RegisterEffectControlProvider(this, oldElement, element);
 
-			// I can't fake this bit... not sure what to do here
-			//if (element != null)
-			//	element.SendViewInitialized(NativeView);
+			
+			if (element != null)
+			{
+				var method = typeof(Forms).GetRuntimeMethods().FirstOrDefault(m => m.Name == "SendViewInitialized");
+				method.Invoke(null, new object[] { element, NativeView });
+		}
 		}
 
 		private static void RegisterEffectControlProvider(IEffectControlProvider self, IElementController oldElement, IElementController newElement)
